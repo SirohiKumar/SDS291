@@ -1,0 +1,10 @@
+---
+title: "SDS 291 - STAT2 R Companion Chapter 1"
+output: html_notebook
+---
+
+
+```{r}
+
+```
+
