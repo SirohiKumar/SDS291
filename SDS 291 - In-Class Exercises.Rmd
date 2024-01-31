@@ -1,0 +1,127 @@
+---
+title: "Kumar: SDS 291 - In-Class Exercises"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Class 2 | January 31, 2024
+
+### SET UP 
+
+#### load libraries
+```{r}
+
+library(Stat2Data)
+library(ggplot2)
+library(broom)
+library(equatiomatic)
+
+```
+
+#### load data
+```{r}
+
+## load data
+data("BaseballTimes2017")
+head(BaseballTimes2017)
+
+```
+
+#### generate visualization
+```{r}
+
+plot = ggplot(BaseballTimes2017, mapping = aes(x = Pitchers, 
+                                               y = Time)) + 
+  geom_point() +
+  theme_bw() + 
+  geom_smooth(method = lm, se = FALSE, formula = y ~ x)
+
+plot
+
+```
+
+### EXERCISE 1
+
+a: Fit the regression model visualized above
+```{r}
+
+baseball_model = lm(Time ~ Pitchers, BaseballTimes2017)
+
+```
+b: Print the model summary
+```{r}
+
+summary(baseball_model)
+
+```
+c: Interpret the model's slope coefficient in a sentence. 
+
+This model indicates that for each increase in pitchers by one during a game, the duration of the game tends to last 8.017 minutes more. 
+
+### EXERCISE 2
+Use the fitted model’s equation to compute the residual error for Game #10, between the Los Angeles Angels and the Seattle Mariners, a game where 9 pitchers were used (feel free to use pen and paper when working with the equation). Finally, check your work using the `augment()` function from the `broom()` package to inspect the precise residual error.
+
+#### estimate on your own
+
+isolate the coefficients
+```{r}
+
+baseball_coefs = coef(baseball_model)
+baseball_coefs
+
+```
+
+generate the estimated time
+```{r}
+
+## Game 10 time = slope * # of pitchers + error
+g10_time_est = 8.017241*9 + 124.068966
+g10_time_est
+
+```
+
+#### calculate the residual
+
+actual time: 
+```{r}
+
+## access baseball times at row 10, column 7 (game 10, time)
+g10_time = BaseballTimes2017[10, 7]
+g10_time
+
+```
+
+calculate the residual by subtracting the estimate from the actual value: 
+```{r}
+
+g10_resid = g10_time - g10_time_est
+g10_resid
+
+```
+
+
+#### check your work
+
+calculate the residuals for all rows from the computer's model
+```{r}
+
+residuals = augment(baseball_model)
+
+```
+
+isolate game 10's *actual* residual
+```{r echo=FALSE}
+
+## remember that R indexes starting at 1, not 0 (fucked in the head)
+
+## (row 10), residuals column (col 4)
+residuals[10,4]
+
+```
+
+## Class 3 | February 2, 2024
+
+
