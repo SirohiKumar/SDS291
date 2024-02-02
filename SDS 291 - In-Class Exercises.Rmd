@@ -122,6 +122,8 @@ residuals[10,4]
 
 ```
 
-## Class 3 | February 2, 2024
+
+
+
 
 
