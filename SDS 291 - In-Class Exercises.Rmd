@@ -7,6 +7,107 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Class 3 | February 2, 2024
+
+### SET UP
+
+#### load data and libraries
+```{r warning=FALSE}
+
+library(infer)
+library(ggplot2)
+
+NCbirths = read.csv("https://bit.ly/ncbirths")
+head(NCbirths)
+
+```
+
+#### visualize data
+
+we are looking at the relationship between the age of the mother and the weight of the baby
+```{r}
+
+plot = ggplot(data = NCbirths, mapping = aes(x = mage, y = weight)) +
+  geom_point() + 
+  geom_smooth(method = lm, formula = y ~ x, se = FALSE) +
+  theme_bw()
+
+plot
+
+```
+
+#### use randomization distribution to test
+
+the actual slope of the distribution
+```{r}
+
+observed_slope = NCbirths %>%
+  specify(weight ~ mage) %>%
+  calculate(stat = "slope")
+
+```
+
+generate the random distribution using permutations
+```{r}
+
+set.seed(54321)
+
+permutation_dist = NCbirths %>%
+  specify(weight ~ mage) %>%                    ## variables and relationship?
+  hypothesize(null = "independence") %>%        ## set the null hypothesis there's no relationship
+  generate(reps = 1000, type = "permute") %>%   ## generate the random distributions
+  calculate(stat = "slope")                     ## calculate the slope of each distribution
+  
+```
+
+visualize the random distribution
+```{r}
+
+visualize(permutation_dist) +
+  shade_p_value(obs_stat = observed_slope, direction = "both")
+
+```
+
+generate a p-value
+```{r}
+
+p_value = permutation_dist %>%
+  get_p_value(obs_stat = observed_slope, direction = "both")
+
+p_value
+
+```
+
+### EXERCISE 1
+
+the slope of the line in figure 1 (first visualization) is the slope between the original distribution, aka `observed_slope`: 
+```{r echo=FALSE}
+
+observed_slope
+
+```
+
+### EXERCISE 2
+
+Using the visualize() function displays a histogram. Ignoring any red shaded regions, what does this histogram itself represent?
+
+this visualization shows the distribution of the slope values for the 1000 random permutations of the dataset. so it shows the number of distributions (y-axis) with a certain slope value (x-axis). 
+
+### EXERCISE 3
+What are the chances of observing a slope as extreme or more extreme as the one observed in these data, if the mother’s age and the babies birth weight are truly unrelated to one another?
+
+given the mother's age has no impact on the weight of the baby, the chances of observing a slope as extreme as the one observed in the data is the p-value of the original data in the randomization distribution, aka `p_value`
+
+```{r echo=FALSE}
+
+p_value
+
+```
+
+### EXERCISE 4
+
+according to this model, there is a non-significant probability that the mother's age has a correlation with the baby's weight. 
+
 ## Class 2 | January 31, 2024
 
 ### SET UP 
