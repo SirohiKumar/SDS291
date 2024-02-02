@@ -7,7 +7,7 @@ output:
 
 ## Section 1.1: The Simple Linear Regression Model (01-30-24)
 
-#### load libraries
+#### load libraries + data
 ```{r message=FALSE}
 
 library(ggplot2)
@@ -15,11 +15,6 @@ library(Stat2Data)
 library(broom)
 library(dplyr)
 library(equatiomatic) ##remotes::install_github("datalorax/equatiomatic")
-
-```
-
-#### load the data
-```{r}
 
 data("AccordPrice")
 head(AccordPrice)
@@ -114,11 +109,6 @@ display the model looking fancy
 extract_eq(centered_model, use_coefs = TRUE)
 
 ```
-
-
-
-
-
 
 
 
