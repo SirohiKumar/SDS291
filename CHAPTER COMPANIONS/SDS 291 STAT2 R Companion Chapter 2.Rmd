@@ -1,0 +1,208 @@
+---
+title: "SDS 291 - STAT2 R Companion Chapter 2: Inference for Simple Linear Regression"
+output: html_notebook
+---
+
+## Section 2.1: Inference for Regression Slope (02-06-2024)
+
+#### load libraries + data
+```{r}
+
+library(Stat2Data)
+library(broom)
+data("AccordPrice")
+
+```
+
+generate a linear model from the price and mileage data
+this model contains a t-, p-, and SE-value
+```{r}
+
+price_mileage = lm(Price ~ Mileage, data = AccordPrice)
+summary(price_mileage)
+
+```
+
+#### generate confidence interval
+
+calculate a critical value
+```{r}
+
+## p = percentile from the dist we want to see
+## df = degrees of freedom
+crit_t = qt(p = 0.975, df = 30-2)
+crit_t
+
+```
+
+execute the confidence interval formula manually
+```{r}
+
+beta1 = -0.1198
+crit_t = crit_t
+SE_beta = 0.0141
+
+lower = beta1 +- crit_t * SE_beta
+upper = beta1 + crit_t * SE_beta
+
+c("Lower" = lower, "Upper" = upper)
+
+```
+
+confidence interval using R's built in functions
+```{r}
+
+## using default confidence level
+confint(price_mileage)
+
+```
+
+higher confidence interval
+```{r}
+
+confint(price_mileage, level = 0.99)
+
+```
+
+generate confidence interval from regression table
+```{r}
+
+tidy(price_mileage, conf.int = TRUE, conf.level = 0.95)
+
+```
+
+## Section 2.3: Regression and Correlation (02-14-2024)
+
+#### load libraries
+```{r message=FALSE}
+
+library(dplyr)
+
+```
+
+#### the coefficient of determination
+
+the $R^2$ value is in the summary, as `Multiple R-squared`
+```{r}
+
+summary(price_mileage)
+
+```
+
+#### determining the correlation coefficient
+```{r}
+
+AccordPrice %>%
+  summarize(r = cor(x = Mileage, y = Price))
+
+```
+
+#### performing a t-test on the correlation coefficient
+```{r}
+
+cor.test(formula = ~ Mileage + Price, data=AccordPrice)
+
+```
+
+## Section 2.4: Intervals for Predictions (02-09-2024)
+
+#### load libraries and data
+```{r message=FALSE}
+
+library(broom)
+library(dplyr)
+library(ggplot2)
+
+price_mileage = lm(Price ~ Mileage, data = AccordPrice)
+
+```
+
+#### generate confidence and predictor intervals
+```{r}
+
+## the upper and lower bounds of the interval are in the .upper and .lower columns for each value 
+augment(price_mileage, interval = "confidence")
+
+```
+
+#### specify confidence level
+```{r}
+
+augment(price_mileage, interval = "confidence", conf.level = 0.99)
+
+```
+
+#### generate a prediction model instead
+```{r}
+
+augment(price_mileage, interval = "prediction", conf.level = 0.99)
+
+```
+
+
+#### computing intervals around new observations
+```{r}
+
+## generate new data
+new_mileages = data.frame(Mileage = c(20, 50, 100))
+
+## run the new data with existing model + add confidence interval
+augment(price_mileage, newdata = new_mileages, interval = "confidence")
+
+```
+
+#### visualizing intervals around a regression model
+
+visualize the existing data
+```{r}
+
+ggplot(data = AccordPrice, mapping = aes(x = Mileage, y = Price)) + 
+  geom_point() + 
+  geom_smooth(method = lm, formula = y ~ x)
+
+```
+
+to add a prediction interval we have to generate values manually. first we generate an interval for every X value from the min(mileages) to max(mileages)
+```{r}
+
+new_mileages = data.frame(Mileage = seq(from = 0, to = 150, by = 0.1))
+prediction_interval = augment(price_mileage, 
+                              newdata = new_mileages, 
+                              interval = "prediction")
+
+```
+
+visualize using `geom_line()`
+```{r}
+
+ggplot(data = AccordPrice, mapping = aes(x = Mileage, y = Price)) +
+  geom_point() + 
+  geom_smooth(method = lm, formula = y ~ x) + 
+  geom_line(data = prediction_interval, mapping = aes(y = .upper),
+            color = "red", linetype = 2) + 
+  geom_line(data = prediction_interval, mapping = aes(y = .lower),
+            color = "red", linetype = 2)
+
+```
+
+visualize using `geom_ribbon()`
+```{r}
+
+ggplot(data = AccordPrice, mapping = aes(x = Mileage, y = Price)) + 
+  geom_point() +
+  geom_smooth(method = lm, formula = y ~ x) + 
+  geom_ribbon(data = prediction_interval, 
+            mapping = aes(y = .fitted, ymax = .upper, ymin = .lower),
+            color = "red", fill = "red", alpha = 0.05, linetype = 2)
+
+```
+
+
+
+
+
+
+
+
+
+

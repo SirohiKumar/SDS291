@@ -1,11 +1,540 @@
 ---
-title: "Kumar: SDS 291 - In-Class Exercises"
+title: "Kumar: SDS 291 In-Class Exercises"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## Class 13 | March 6, 2024
+
+#### load library
+```{r}
+
+library(tidyverse)
+
+```
+
+
+#### load data
+```{r}
+
+```
+
+
+## Class 11 | March 1, 2024
+
+### SET UP
+
+#### load libraries
+```{r}
+
+library(Stat2Data)
+library(regplanely)
+library(ggplot2)
+library(performance)
+
+```
+
+#### load data
+```{r}
+
+data("Diamonds")
+head(Diamonds)
+
+```
+
+### EXERCISE 1
+
+#### visualize data
+```{r}
+
+ggplot(data = Diamonds, mapping = aes(y = TotalPrice,
+                                      x = Carat)) +
+  geom_point() +
+  # geom_smooth(method = lm, formula = y ~ x) +
+  theme_bw() 
+
+```
+
+#### generate model
+```{r}
+
+model = lm(TotalPrice ~ Carat * PricePerCt, data = Diamonds)
+summary(model)
+
+```
+
+#### assess fitness of model
+```{r}
+
+check_model(model, check = c("qq", "normality", "linearity", "homogeneity"))
+
+```
+while there are some mild violations of the assumptions made for the model, especially as fitted values increase in magnitude, the model is mostly sound. 
+
+#### visualize model
+```{r}
+
+regression_plane(model)
+
+```
+
+
+#### interpret model
+
+this model has an adjusted $R^2$ value of 1, which means a great deal of the variation is explained by our model. this model tell us that for each increase in increase in Carat by one, price increases by 1 + 6.831e-03. 
+
+## Class 10 | February 28, 2024
+
+### SET UP
+
+#### load libraries
+```{r message=FALSE}
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+
+```
+
+#### load data
+```{r}
+
+lung_volume = read.csv("https://bit.ly/lung_volume")
+head(lung_volume)
+
+```
+
+#### visualize data
+```{r}
+
+ggplot(data = lung_volume, aes(x = smoke, y = fev)) +
+  geom_boxplot() + 
+  theme_bw()
+
+```
+
+### QUESTION 1
+*Visualize a regression model that estimates how smoking affects FEV, taking into account a persons age. Your model should allow the effect of smoking to depend on a person’s age.*
+```{r}
+
+ggplot(data = lung_volume, mapping = aes(y = fev, 
+                                         color = smoke,
+                                         x = age)) + 
+  geom_point() +
+  geom_smooth(method = lm, formula = y ~ x, se = F) + 
+  theme_bw()
+
+```
+
+### QUESTION 2
+*How does age affect lung volume among non-smokers?*
+*How does age affect lung volume among smokers?*
+```{r}
+
+smoking_model = lm(fev ~ age * smoke, data = lung_volume)
+summary(smoking_model)$coefficients
+
+```
+* `age:smokeYes` is the change in slope for the **smokers**, indicating that for each increase in age by one, the `fev` value increases by -0.163 + 0.243 = 0.080. 
+* `age` is the slope for the baseline group, aka **non-smokers**, indicating that for each increase in age by one, `fev` increases by 0.243. 
+
+
+### QUESTION 3
+*Do you believe that smoking changes the relationship between age and lung volume? Support your answer using information from the regression table*
+
+yes -- this model indicates that for people who smoke, as they get older their lung capacity actually begins to decrease, whereas for non-smokers, their lung capacity tends to increase as they get older. the p-values in this table indicate that the difference in the change in slope between the non- and smokers is significant (`age:smokeYes` = 1.645e-07). 
+
+### QUESTION 4
+*Is there a difference in lung volume between an averaged age person who smokes and an average aged person who doesn’t smoke?*
+
+#### generate recentered model
+
+the existing model is based on smokers being 0 years, but we can mean-recenter the X value to compare lung volumes when $age - \bar{x}_{age} = 0$, which is when age = average age. 
+```{r}
+
+ggplot(data = lung_volume, aes(x = age - mean(age), 
+                               y = fev,
+                               color = smoke)) + 
+  geom_point() + 
+  geom_smooth(se = F, method = lm, formula = y ~ x) +
+  theme_bw()
+
+```
+
+#### generate a new model
+```{r}
+
+lung_volume = mutate(lung_volume,
+                     mc_age = age - mean(age))
+
+mc_lung_model = lm(fev ~ mc_age * smoke, data = lung_volume)
+summary(mc_lung_model)$coefficients
+
+```
+this new model tells us the change in slope for average-aged smokers is 0.327 more than the change in slope for average-aged non-smokers. we can tell that difference is significant because the the p-value for that difference is 0.011 < 0.05. 
+
+## Class 9 | February 23, 2024
+
+### SET UP
+
+#### load libraries
+```{r message=FALSE}
+
+library(tidyverse)
+library(moderndive)
+library(performance)
+
+```
+
+#### data wrangling
+```{r}
+
+nyc_airport_weather = read.csv("https://bit.ly/nyc_airport_weather")
+nyc_airport_weather = nyc_airport_weather %>%
+  filter(!is.na(avg_temp))
+
+head(nyc_airport_weather)
+
+```
+
+### QUESTION 1
+*Visualize a parallel slopes model that uses temperature and airport to predict the humidity level*
+
+#### visualize new data
+```{r}
+
+ggplot(data = nyc_airport_weather, mapping = aes(y = avg_humid,
+                                                 x = avg_temp,
+                                                 color = airport)) + 
+  geom_point() + 
+  geom_parallel_slopes(se = F) + 
+  theme_bw()
+
+```
+
+*Fit the same parallel slopes model you visualized and report the regression table*
+
+#### fit + report
+```{r}
+
+airport_model = lm(avg_humid ~ avg_temp + airport, data = nyc_airport_weather)
+summary(airport_model)$coefficients
+
+```
+
+#### assess the fit of the model 
+```{r}
+
+check_model(airport_model, check = c("qq", "normality", "linearity", "homogeneity"))
+
+```
+
+from this check, we see that there are some mild assumption violations in the normality of residuals tests, but otherwise, this model is mostly appropriate. 
+
+### QUESTION 2
+*Match each of the labeled line segments in the figure below to the coefficient in the equation that it best represents, and also note the coefficient’s fitted from the regression table.*
+
+* A --> $b_2$ --> 2.272
+* B --> $b_3$ --> -3.746
+* C --> $b_1$ --> 0.128
+* D --> none  --> none
+
+### QUESTION 3
+*What is the estimated humidity at Newark Liberty International Airport when the average monthly temperature is zero degrees?*
+
+```{r}
+
+new_data = data.frame(avg_temp = 0, airport = "EWR")
+predict(airport_model, new_data)
+
+```
+
+### QUESTION 4
+*Imagine that a flight that was schedule to land at Newark Liberty International Airport got diverted to LaGuardia airport, and the temperature was 64 degrees. Would it be more humid or less humid at LaGuardia at Newark when the flight lands? By how much?*
+
+#### humidity at EWR
+```{r}
+
+predict(airport_model, data.frame(avg_temp = 64, airport = "EWR"))
+
+```
+
+
+#### humidity at LGA
+```{r}
+
+predict(airport_model, data.frame(avg_temp = 64, airport = "LGA"))
+
+```
+
+based on this model, we can predict that it would be less humid at LGA when the plane lands, than it would be at EWR, given that the temperature was 64 at both. 
+
+## Class 8 | February 21, 2024
+
+### SET UP
+
+#### load libraries
+```{r}
+
+library(Stat2Data)
+library(ggplot2)
+
+data("BaseballTimes2017")
+
+head(BaseballTimes2017)
+
+```
+
+#### generate model
+```{r}
+
+pitchers_model = lm(Time ~ Pitchers, data = BaseballTimes2017)
+summary(pitchers_model)
+
+```
+
+#### visualize model
+```{r}
+
+ggplot(data = BaseballTimes2017, mapping = aes(x = Pitchers, 
+                                               y = Time)) + 
+  geom_point() +
+  geom_smooth(method = lm, formula = y ~ x) + 
+  theme_bw()
+
+```
+
+
+### QUESTION 1
+
+*Extend the simple linear regression model above by including the total number of runs scored as an explanatory variable*
+```{r}
+
+pitcher_run_model = lm(Time ~ Pitchers + Runs, data = BaseballTimes2017)
+summary(pitcher_run_model)
+
+```
+
+#### Question 1A
+*How should you interpret the `Runs` coefficient in the context of these data?*
+
+The `Runs` coefficient tells us that, based on this sample, the model predicts that for each increase in `Runs` by one, and assuming the `PItchers` value holds constant at any given value, the time will increase by 3.262 minutes. 
+
+#### Question 1B:
+*Is there still good evidence for a linear relationship between the number of pitchers and game duration, even after taking into account the number of runs scored in a game?*
+
+No. There's a higher correlation between the number of Runs and the duration of the games than there is between the number of pitchers and the duration of the game, as evidenced by Runs' p-value being power than Pitchers'. 
+
+### QUESTION 2
+*Why does the effect of Pitchers appear smaller, once you account for the number of runs scored?*
+
+This is an multiple linear regression model, meaning the coefficients of the explanatory variables, which have their own relationship, are adjusted to account for the simultaneous effects -- the effect of Runs ~ Pitchers and Time ~ Runs + Pitchers. This results in the effect of Pitchers looking smaller when Runs is accounted for. 
+
+## Class 5 | February 9, 2024
+
+### SET UP
+
+#### load libraries and data
+```{r message=FALSE}
+
+library(Stat2Data)
+library(tidyverse)
+data("MothEggs")
+
+```
+
+#### generate regression model
+```{r}
+
+moth_model = lm(Eggs ~ BodyMass, data = MothEggs)
+summary(moth_model)
+
+```
+#### visualize distribution
+```{r}
+
+ggplot(data = MothEggs, mapping = aes(x = BodyMass, y = Eggs)) +
+  geom_point() + 
+  geom_smooth(method = lm, formula = y ~ x) + 
+  scale_x_continuous(breaks = seq(1.2, 2.3, by = 0.1)) + 
+  theme_bw()
+
+```
+
+### EXERCISE 1
+
+```{r}
+
+slope_coeff = 79.86
+
+std_error = sd(MothEggs$BodyMass)
+
+alpha = 0.05
+df = nrow(MothEggs)- 2
+t_crit = qt(1 - alpha/2, df)
+
+margin_error = t_crit * std_error
+
+lower = slope_coeff - margin_error
+upper = slope_coeff + margin_error
+
+```
+
+
+### EXERCISE 2
+for a moth with a body mass of 1.3 grams, the possible range of eggs is about 100 to 150. 
+
+### EXERICSE 3
+if an 84% confidence interval was constructed around the fitted slope coefficient from each sample, i would predict that 0.84*200 = 164 of the intervals would capture the true slope of the Eggs ~ BodyMass regression model. 
+
+## Class 4 | February 7, 2024
+
+### SET UP
+```{r message=FALSE}
+
+library(tidyverse)
+
+```
+
+#### generate data
+```{r}
+
+set.seed(1)
+n = 20
+
+# simulated_data = data.frame(dataset_id = rep(1:10000, each = n),
+#                              x = rnorm(n, mean = 10, sd = 5)) %>%
+#   mutate(y = 3 + rnorm(n*10000, mean = 0, sd = 2))
+
+```
+
+#### constructing the sampling distribution of the standardized slope
+```{r}
+
+# extract_slope_and_std_error = function(model) {
+#   reg_table = summary(model)$coefficients 
+#   stats = data.frame(Slope = reg_table[2, "Estimate"],
+#                      Std_Error = reg_table[2, "Std. Error"])
+#   return(stats)
+# }
+# 
+# ## generate slopes from simulated data grouped by id number, then summarize w/ slope and std error
+# slopes = simulated_data %>%
+#   group_by(dataset_id) %>%
+#   summarise(extract_slope_and_std_error(lm(y ~ x)))
+# 
+# head(slopes)
+
+```
+
+### EXERCISE 1
+```{r}
+
+## t-value is the slope/std-error value
+# slopes = slopes %>%
+#   mutate(t = Slope / Std_Error)
+# 
+# head(slopes)
+
+```
+
+### EXERCISE 2
+
+visualize the t-statistic distribution
+```{r}
+
+# ## data is slopes, put on the x-axis the t-statistics
+# ggplot(slopes, aes(x = t)) + 
+#   ## make a histogram with 40 bins that shows density
+#   geom_histogram(mapping = aes(y = after_stat(density)),
+#                  bins = 40) + 
+#   ## do colors
+#   geom_function(color = "blue", fun = function(x) { dt(x, df =10000-2)}) +
+#   ## set the bounds for the x axis
+#   scale_x_continuous("t statistics for slope", limits = c(-5, 5))
+
+```
+
+
+### EXERCISE 3
+
+`qt()` function looks at the quantiles of a distribution
+these distributions are symmetrical, which is why these are the +- versions of the same value
+```{r}
+
+## has only 1% of results above it
+qt(0.01, df = 10000-2)
+
+## has 99% of all results above it
+qt(0.99, df = 10000-2)
+
+```
+
+### EXERCISE 4
+
+#### violating the normality assumption 
+we do this by using a exponential distribution instead of a normal one
+```{r}
+
+set.seed(1)
+
+# bad_data = data.frame(dataset_id = rep(1:10000, each = n),
+#                       x = rnorm(n, mean = 10, sd = 5)) %>%
+#   mutate(y = 3 + rexp(n*10000, rate = 3))
+# 
+# head(bad_data)
+
+```
+
+#### generate slopes
+```{r}
+
+# bad_model_slopes = bad_data %>%
+#   group_by(dataset_id) %>%
+#   summarize(extract_slope_and_std_error(lm(y ~ x))) %>%
+#   mutate(t = Slope / Std_Error)
+
+```
+
+#### visualize the bad_data 
+slopes of exponential distribution
+```{r}
+
+# ggplot(data = bad_model_slopes, mapping = aes(x = t)) + 
+#   geom_histogram(aes(y = after_stat(density)), 
+#                  bins = 40, fill = "red", alpha = 0.5) +
+#   geom_function(color = "blue", fun = function(x) dt(x, df = n - 2)) +
+#   scale_x_continuous("t statistics for slope", limits = c(-5, 5))
+
+```
+I would have expected this distribution to not be unimodal and mostly symmetrical -- rather, because the values are exponential, I would have expected the majority of values to be **further** from the center, so more of a bowl shape than a hill. 
+
+### EXERCISE 5
+
+#### 1% percentile
+this value has 99% of all values in the distribution above it
+```{r}
+
+# bad_model_slopes %>%
+#   summarize(q = quantile(t, 0.01))
+
+```
+#### 99% percentile 
+this value has only 1% of values in the rest of the distribution above it. 
+
+this value is closer to zero than the 0.01 quantile, implying the distribution isn't symmetrical
+```{r}
+
+# bad_model_slopes %>%
+#   summarize(q = quantile(t, 0.99))
+
+```
+
+### EXERCISE 6
+the t-distribution should be fully symmetrical but this one is not, meaning you can't make two-way test inferences with accuracy. 
 
 ## Class 3 | February 2, 2024
 

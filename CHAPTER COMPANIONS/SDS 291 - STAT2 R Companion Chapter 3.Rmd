@@ -1,0 +1,476 @@
+---
+title: "SDS 291 - STAT2 R Companion Chapter 3: Multiple Regression"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Chapter 3: Multiple Regression
+
+#### load libraries
+```{r message=FALSE}
+
+library(Stat2Data)
+library(dplyr)
+library(GGally)
+library(gridExtra)
+
+```
+
+#### load data
+```{r}
+
+data("NFLStandings2016")
+
+## isolate select stats for all teams
+nfl_minimal = NFLStandings2016 %>%
+  select(WinPct, PointsFor, PointsAgainst)
+
+head(nfl_minimal)
+
+```
+
+#### visualize
+```{r}
+
+ggpairs(nfl_minimal)
+
+```
+
+#### generate models
+```{r}
+
+winpct_pointsfor = summary(lm(WinPct ~ PointsFor, data = nfl_minimal))$r.squared
+winpct_pointsagainst = summary(lm(WinPct ~ PointsAgainst, data = nfl_minimal))$r.squared
+
+winpct_pointsfor
+winpct_pointsagainst
+
+```
+
+#### annotate charts with these values
+```{r}
+
+pointsfor_plot = ggplot(data = NFLStandings2016, aes(x = PointsFor, y = WinPct)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se=F, formula = y ~ x) +
+  annotate(geom = "label", x = 475, y = 0.1,
+           label = paste0("R^2==", round(winpct_pointsfor, 2)),
+           parse = T, size = 6)
+
+pointsagainst_plot = ggplot(data = NFLStandings2016, aes(x = PointsAgainst, y = WinPct)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se=F, formula = y ~ x) +
+  annotate(geom = "label", x = 425, y = 0.85,
+           label = paste0("R^2==", round(winpct_pointsagainst, 2)),
+           parse = T, size = 6)
+
+```
+
+#### visualize side by side
+```{r}
+
+grid.arrange(pointsfor_plot, pointsagainst_plot, nrow = 1)
+
+```
+
+
+
+## Section 3.1: Multiple Linear Regression Model (02-28-24)
+
+#### load libraries
+```{r message=FALSE}
+
+library(devtools)
+library(regplanely)
+library(equatiomatic)
+
+```
+
+
+#### generate multiple regression model
+```{r}
+
+winpct_multiple = lm(WinPct ~ PointsFor + PointsAgainst, data = nfl_minimal)
+summary(winpct_multiple)
+
+extract_eq(winpct_multiple, use_coefs = T, coef_digits = 4)
+
+```
+
+#### visualizing multiples regression model --> 3D model
+```{r}
+
+regression_plane(winpct_multiple)
+
+```
+
+## Section 3.2: Assessing a Multiple Regression Model (02-28-24)
+
+#### load libraries
+```{r message=FALSE}
+
+library(performance)
+library(broom)
+
+```
+
+#### check the quality of the model
+```{r}
+
+check_model(winpct_multiple, check = c("linearity", "homogeneity", 
+                                       "qq", "normality"))
+
+```
+
+#### t-tests for coefficients
+```{r}
+
+summary(winpct_multiple)$coefficients
+
+```
+
+#### confidence intervals for the coefficients
+```{r}
+
+tidy(winpct_multiple, conf.int = T)
+
+```
+
+#### ANOVA for multiple regression
+
+columns of the ANOVA tables from textbook: 
+
+* degrees of freedom, sum of squares, mean square, and F-statistic for the "Model" or "Regression" variance
+* degrees of freedom, sum of squares, mean square, and F-statistic for the "Error" variance
+* total degrees of freedom, sum of squares, mean square, for both outcome variables
+
+ours has slightly different results, providing these stats for each explanatory variable in the model, taking into account the previous variable(s). 
+```{r}
+
+anova(winpct_multiple)
+
+```
+
+we can generate the one from the textbook by summing the rows of the ANOVA table:
+```{r}
+
+anova(winpct_multiple) %>%
+  as_tibble() %>%
+  slice(1:2) %>% ## first two rows of the table
+  summarise(df = sum(Df),
+            `sum sq` = sum(`Sum Sq`)) %>%
+  mutate(`mean sq` = `sum sq`/df)
+
+```
+
+#### coefficient of multiple determination (adjusted $R^2$)
+
+see line second from the bottom of the table
+```{r}
+
+summary(winpct_multiple)
+
+```
+
+#### confidence and prediction intervals
+```{r}
+
+predict(winpct_multiple, interval = "confidence")
+
+```
+
+a data frame holding all possible combinations of the values...
+```{r}
+
+points_grid = expand.grid(PointsFor = c(200, 300, 400),
+                          PointsAgainst = c(200, 300, 400))
+
+```
+
+```{r warning=FALSE}
+
+predict(winpct_multiple, new_data = points_grid,
+        interval = "prediction", level = 0.99)
+
+```
+
+## Section 3.3: Comparing Two Regression Lines (03-01-24)
+
+#### load libraries
+```{r message=FALSE}
+
+library(moderndive)
+library(equatiomatic)
+library(performance)
+
+```
+
+#### load data
+```{r}
+
+data("ButterfliesBc")
+head(ButterfliesBc)
+
+```
+
+#### visualize the two different groups
+
+generate a column in the data which refers to males + females as "m" or "f"
+```{r}
+
+ButterfliesBc = ButterfliesBc %>%
+  mutate(label = recode(Sex, Male = "m", Female = "f"))
+
+head(ButterfliesBc)
+
+```
+
+visualize the new data
+```{r}
+
+ggplot(data = ButterfliesBc, mapping = aes(x = Temp,
+                                           y = Wing,
+                                           color = Sex)) +
+  geom_text(aes(label = label)) + 
+  guides(label = "none", color = "none") + 
+  theme_bw()
+
+```
+
+because `geom_smooth()` will fit each group with its own simple linear model when visualizing, we have to use `geom_parallel_slopes()` to visualize the two SLRMs. 
+```{r}
+
+ggplot(data = ButterfliesBc, mapping = aes(x = Temp,
+                                           y = Wing,
+                                           color = Sex)) + 
+  geom_text(aes(label = label)) + 
+  guides(label = "none", color = "none") + 
+  geom_parallel_slopes(se = F) + 
+  theme_bw()
+
+```
+
+to make a more traditional version of this model: 
+```{r}
+
+ggplot(data = ButterfliesBc, mapping = aes(x = Temp,
+                                           y = Wing,
+                                           color = Sex)) + 
+  geom_point() + 
+  geom_parallel_slopes(se = F) + 
+  theme_bw()
+
+```
+
+#### fitting the parallel slopes model
+
+in this model, the indicator variable `IMale` is referred to instead as `SexMale`, which follows a `{NameOfVariable}{NameOfGroup}` pattern for labeling indicator variables. 
+```{r}
+
+wing_sex_model = lm(Wing ~ Temp + Sex, data = ButterfliesBc)
+summary(wing_sex_model)$coefficients
+
+```
+interpreting this model: 
+
+* `(Intercept)` is the y-axis intercept for the baseline group (when sex = Male = 0 and Temp = 0), the `Wing` of the butterfly. 
+* `Temp` is the average change in `Wing` for a butterfly for each increase in `Temp` by one, regardless of butterfly Sex (slopes are parallel).
+* `SexMale` is the distance from any Sex = 1 (female) value to a Sex = 0 (male) value. 
+
+#### extract the regression equation
+```{r}
+
+extract_eq(wing_sex_model, use_coefs = T)
+
+```
+
+to more easily isolate the indicator variable: $$\operatorname{\widehat{Wing}} = 19.34 - 0.24(\operatorname{Temp}) - 0.93 \cdot 1_{\operatorname{Male}}{(\operatorname{Sex}})$$
+
+#### assessing the parallel slopes model
+
+this model's assumptions are only violated a small amount, mostly in the bottom left quadrant, with higher values. 
+```{r}
+
+check_model(wing_sex_model, check = c("qq", "normality", "linearity", "homogeneity"))
+
+```
+
+#### removing the parallel slopes constraint
+
+generate the data
+```{r}
+
+data("Kids198")
+head(Kids198)
+
+```
+
+before visualizing, we have to replace the indicator variable values for sex with something R will see as categorical/discrete, not numeric/continuous
+```{r}
+
+Kids198 = Kids198 %>%
+  mutate(Sex = factor(Sex, labels = c("Male", "Female")))
+
+head(Kids198)
+
+```
+
+visualize: 
+```{r}
+
+ggplot(data = Kids198, mapping = aes(x = Age,
+                                     y = Weight,
+                                     color = Sex)) + 
+  geom_point() + 
+  geom_smooth(method = lm, formula = y ~ x, se = F) + 
+  theme_bw()
+
+```
+
+we can also fit this model using `lm()`, but we have to modify the model itself
+```{r}
+
+weight_age_model = lm(Weight ~ Age * Sex, data = Kids198)
+summary(weight_age_model)$coefficients
+
+```
+
+for interpreting this: 
+
+* `(Intercept)` is the y-axis intercept for the baseline group (indicator variable is 0, Male), and we can tell the baseline group is Male because it's *not* labelled in the coefficient table. 
+* `Age` coefficient is the slope of the baseline group (Male), because it doesn't refer to any specific group. 
+* `SexFemale` represents the difference in intercept between the two groups' lines (the Female intercept is 31.9 above the Male intercept)
+* `Age:SexFemale` is the difference between the two groups' slopes -- distance from the Male group's to the Female group's. 
+
+this means we have to infer the measures for the Female group's intercept and slope from the Male group's. 
+
+```{r}
+
+extract_eq(weight_age_model, use_coefs = F)
+
+```
+## Section 3.4: New Predictors from Old (03-02-24)
+
+#### load libraries
+```{r}
+
+library(Stat2Data)
+library(regplanely)
+library(equatiomatic)
+library(broom)
+library(regplanely)
+
+```
+
+#### load data
+```{r}
+
+data("Perch")
+head(Perch)
+
+```
+
+#### MLRM w/ numeric predictors
+```{r}
+
+perch_model = lm(Weight ~ Length * Width, data = Perch)
+tidy(perch_model)
+
+```
+
+interpreting the terms:
+
+* `(Interpret)` the z-axis intercept, the predicted Y value when $X_1$ and $X_2$ are 0
+* `Length` the change in weight for each additional centimeter of *width* (when the fish has *length* 0)
+* `Width` the change in weight for each additional centimeter of *length* (when the fish has *width* 0)
+* `Length:Width` could be considered the change in slope of the Weight x *Width* when *length* increases by 1, or the change in slope of the Weight x *Length* when *width* changes by 1. 
+
+#### visualize
+```{r}
+
+regression_plane(perch_model)
+
+```
+
+### polynomial regression
+
+#### load the data
+```{r}
+
+data("CO2Germany")
+head(CO2Germany)
+
+```
+
+#### visualize data
+```{r}
+
+ggplot(data = CO2Germany, mapping = aes(x = Day, y = CO2)) + 
+  geom_point() +
+  theme_bw()
+
+```
+
+#### generate the $Day^2$ column
+```{r}
+
+CO2Germany = CO2Germany %>%
+  mutate(day_sq = Day^2) 
+head(CO2Germany)
+
+```
+
+#### generate model
+```{r}
+
+co2_model = lm(CO2 ~ Day + day_sq, data = CO2Germany)
+summary(co2_model)$coefficients
+
+```
+
+#### extract equation
+```{r}
+
+extract_eq(co2_model, use_coefs = TRUE, coef_digits = 5)
+
+```
+
+#### visualize the model
+```{r}
+
+ggplot(data = CO2Germany, mapping = aes(x = Day,
+                                        y = CO2)) +
+  geom_point() +
+  geom_smooth(method = lm, formula = y ~ x + I(x^2), se = F) +
+  theme_bw()
+
+```
+
+### complete second order model
+
+#### load data
+```{r}
+
+data("FunnelDrop")
+head(FunnelDrop)
+
+```
+
+#### generate model
+```{r}
+
+second_order_model = lm(Time ~ Tube * Funnel + I(Funnel^2) + I(Tube^2),
+                        data = FunnelDrop)
+
+broom::tidy(second_order_model)
+
+```
+
+#### visualize model
+```{r}
+
+regression_plane(second_order_model)
+
+```
+

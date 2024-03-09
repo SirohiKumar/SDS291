@@ -1,0 +1,158 @@
+---
+title: "SDS 291 - STAT2 R Companion Chapter 10: Contrasts of Coefficients"
+output: html_notebook
+---
+
+## Section 10.2: A Companion to the Statistical Slueth, Chapter 10.2 (03-05-24)
+
+#### load libraries
+```{r message=FALSE}
+
+library(Sleuth2)
+library(ggplot2)
+library(moderndive)
+library(equatiomatic)
+library(dplyr)
+
+```
+
+#### load data
+```{r}
+
+bat_energy = Sleuth2::case1002
+head(bat_energy)
+
+```
+
+#### visualize the data
+```{r}
+
+ggplot(data = bat_energy, mapping = aes(x = log(Mass), 
+                                        y = log(Energy),
+                                        color = Type)) + 
+  geom_point(size = 2) + 
+  geom_parallel_slopes(se = F) + 
+  scale_x_continuous(breaks = log(c(10, 50, 100, 500)),
+                     labels = c(10, 50, 100, 500)) +
+  scale_y_continuous(breaks = log(c(1, 5, 10, 50)),
+                     labels = c(1, 5, 10, 50)) +
+  theme(legend.position.inside = c(0.75, 0.2)) +
+  theme_bw()
+
+```
+
+#### meet the model
+```{r}
+
+bat_model = lm(log(Energy) ~ log(Mass) + Type, data = bat_energy)
+summary(bat_model)$coefficients
+
+```
+
+```{r}
+
+extract_eq(bat_model, use_coefs = T)
+
+```
+
+because the baseline group here is non echo locating bats, and we want to determine the difference between echo-locating bats and echo-locating birds, we have to either
+
+* change the model's reference group
+* use a contrast of coefficients
+
+#### changing the reference level
+```{r}
+
+bat_energy = bat_energy %>%
+  mutate(Type = factor(Type, levels = c("echolocating bats", ## this is the first group, so it becomes the baseline
+                                        "non-echolocating bats",
+                                        "non-echolocating birds")))
+
+head(bat_energy)
+
+```
+
+```{r}
+
+echolocating_baseline = lm(log(Energy) ~ log(Mass) + Type, data = bat_energy)
+summary(echolocating_baseline)$coefficients
+
+```
+interpreting these coefficients: 
+
+* `(Intercept)`: the average log energy consumption of a non-echolocating bat with body mass 0 log grams
+* `log(Mass)`: the average change in log energy consumption for each additional log gram of body mass
+* `Typenon-echolocating bats`: the difference in average log energy consumption for non-echolocating bats compared to baseline group echolocating bats. 
+* `Typenon-echolocating birds`: the difference in average log energy consumption for echolocating birds compared to baseline group echolocating bats. <-- this is the value we're interested in. 
+
+#### contrasts of coefficients
+```{r}
+
+bat_energy = Sleuth2::case1002
+
+```
+
+a contrast is a weighted linear combination of the model's coefficients which sum to 0. our model's 4 existing coefficients are: 
+
+```{r echo=FALSE}
+
+extract_eq(bat_model, use_coefs = T)
+
+```
+we want to contrast the 3rd and 4th coefficients (`Typenon-echolocating birds` and `Typeecholocating-bats`). 
+
+the general formula for a contrast is: 
+$$g = C_0\hat{\beta}_0 + C_1\hat{\beta}_1 + ... + C_k\hat{\beta}_k$$
+
+so if we give coefficients $\hat{\beta}_0$ and $\hat{\beta}_1$ weights of 0, $\hat{\beta}_3$ a weight of 1, and $\hat{\beta}_4$ a counterweight of $-1$:
+$$g = (0 \cdot -1.58) + (0 \cdot 0.81) + (1 \cdot 0.1) + (-1 \cdot 0.08)$$
+$$g = 0.01 - 0.08$$
+$$g = 0.023$$
+
+to determine if $g$'s value is unusual, we can test it in a hypothesis test. however, this requires access to $g$'s standard error. **the variance of a contrast is the sum of each individual coefficient’s variance, plus negative two times the covariance of the two coefficients**. the square root of this value is $g$'s $SE$. this means we need to generate a co/variance matrix from our model:
+```{r}
+
+co_variance_matrix = vcov(bat_model)
+co_variance_matrix
+
+```
+
+the variance of each coefficient is on the diagonal, and the covariance between each pair is on the off-diagonals: 
+```{r}
+
+var_b3 = co_variance_matrix[3, 3]
+var_b4 = co_variance_matrix[4, 4]
+cov_b3_b4 = co_variance_matrix[3, 4]
+
+var_g = var_b3 + var_b4 + -2*(cov_b3_b4)
+var_g
+
+```
+
+take the square root of this value to find the standard error of $g$: 
+```{r}
+
+SE_g = sqrt(var_g)
+SE_g
+
+```
+
+construct the test statistic
+```{r}
+
+## difference between (NE birds and NE bats) - {E bats and NE bats}
+g = coef(bat_model)[3] - coef(bat_model)[4]
+
+t = g / SE_g
+t
+
+```
+
+test the hypothesis
+```{r}
+
+p_value = 2 * pt(abs(t), df = 20 - 4, lower.tail = F)
+p_value
+
+```
+

@@ -1,0 +1,245 @@
+---
+title: "Kumar - SDS 291 Homework 4"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+# HOMEWORK 4: MULTIPLE REGRESSION MODELS
+
+#### Load libraries
+
+```{r message=FALSE}
+
+library(Stat2Data)
+library(ggplot2)
+library(equatiomatic)
+library(performance)
+tests = c("qq", "linearity")
+
+```
+
+## EXERCISE 1
+
+*To test this theory, the biologists run an experiment where the oxygen consumption rate of shore crabs is measured while the crabs are either exposed to the noise of a cargo ship engine for 7.5 minutes, or experience 7.5 minutes of ambient ocean noise.*
+
+#### Load data
+
+```{r}
+
+data("CrabShip")
+head(CrabShip)
+
+```
+
+### EXERCISE 1A:
+
+*The researchers hypothesized that exposure to ship noise would increase oxygen consumption relative to ambient noise conditions. Furthermore, the researchers believe that the magnitude of this increase would be the same for large crabs and small crabs.*
+
+#### Visualize the model that instantiates the researcher's expectations
+```{r}
+
+ggplot(data = CrabShip, mapping = aes(y = Oxygen, 
+                                      x = Noise)) +
+  geom_boxplot() +
+  geom_point(aes(color = Mass)) + 
+  # geom_smooth(method = lm, formula = y ~ factor(x), se = F) + 
+  theme_bw()
+
+```
+
+
+
+#### Fit the regression model + report regression table
+
+```{r}
+
+crab_noise_model = lm(Oxygen ~ Noise, data = CrabShip) 
+summary(crab_noise_model)
+
+```
+
+#### Interpret the coefficients
+
+```{r}
+
+extract_eq(crab_noise_model, use_coefs = T)
+
+```
+
+* `(Intercept)` = 168.67: the oxygen consumption level if the noise level is 0, aka ambient. 
+* `Noise_{ship}` = 67.55: the average increase in oxygen consumption for a crab from the original level when the noise rises to ship level, above ambient.
+
+#### Does this model evidence the researcher's hypothesis?
+
+*The researcher's hypothesis pt 1: that exposure to ship noise would increase oxygen consumption relative to ambient noise conditions*
+
+There is evidence that there is some impact in oxygen consumption increases when the noise level is above ambient. The $Noise_{ship}$ value is a measure of how much the oxygen level changes when the noise level rises from ambient to ship level. This value being positive means that the average change in oxygen consumption is an increase (by 67.55), and the p-value = $0.0003 < 0.05$ indicates that this increase is statistically significant.
+
+*Hypothesis pt 2: the magnitude of this increase would be the same for large crabs and small crabs.*
+
+This model doesn't take into account the impact of mass, so we cannot conclude whether the effect of the change in noise level on oxygen consumption is the same across crab masses.
+
+### EXERCISE 1B:
+
+*Another research group argues that the model presented by the first group of marine biologists is actually mis-specified, and that the effect of ship noise on oxygen consumption actually depends on a crab’s mass.*
+
+#### Visualize a new model to assess this possibility
+```{r}
+
+ggplot(data = CrabShip, mapping = aes(x = Mass,
+                                      y = Oxygen,
+                                      color = Noise)) + 
+  geom_point() +
+  geom_smooth(method = lm, se = F, formula = y ~ x) + 
+  theme_bw()
+
+```
+
+
+#### Fit the regression model
+
+```{r}
+
+crab_mass_model = lm(Oxygen ~ Noise * Mass, data = CrabShip) 
+summary(crab_mass_model)
+
+```
+
+#### Interpret the coefficients
+
+```{r}
+
+extract_eq(crab_mass_model, use_coefs = T)
+
+```
+
+* `(Intercept)` $= 103.27$: the model's projected oxygen consumption for a crab with mass 0 in an ambient noise condition. 
+* `Noise_{ship}` $= -34.39$: the average change in the oxygen consumption for the ship noise group relative to the ambient noise group. 
+* `Mass` $= 1.19$: the average increase in oxygen consumption for each increase in mass by 1 for the ambient noise condition. 
+* `Noise_{ship} * Mass` $= 2.07$: increase in average oxygen consumption for each increase in mass by one for all crabs in the ship noise group. 
+
+
+#### Does the model evidence the alternative hypothesis?
+
+*Alternative hypothesis: the effect of ship noise on oxygen consumption depends on a crab’s mass*
+
+These researchers posit that the effect of the noise level on oxygen consumption also depends on a crab's mass. We can see from the visualization above as a crab's mass increases so too does their oxygen consumption, across both noise levels.
+
+The `Mass` coefficient represents this change, showing that the average oxygen consumption for a crab increases by 2.07 for each increase in mass by 1 for both noise levels. The p-value $0.0000285 < 0.05$ clearly indicates that this difference is significant.
+
+## EXERCISE 2
+
+#### Load data:
+
+```{r}
+
+data("Pollster08")
+head(Pollster08)
+
+```
+
+### EXERCISE 2A:
+
+*Create a scatterplot of the relationship between Obama’s margin in the polls and the time when the poll was taken*
+
+```{r}
+
+ggplot(data = Pollster08, mapping = aes(x = Days,
+                                        y = Margin)) +
+  theme_bw() + 
+  geom_point() 
+
+```
+
+### EXERCISE 2B:
+
+*Model Obama’s margin in the polls as a function of time using an appropriate regression model.*
+
+#### Linear model
+```{r echo=FALSE}
+
+ggplot(data = Pollster08, mapping = aes(x = Days,
+                                        y = Margin)) +
+  geom_point() + 
+  theme_bw() + 
+  geom_smooth(method = lm, formula = y ~ x, se = F)
+
+```
+
+```{r}
+
+obama_linear = lm(Margin ~ Days, data = Pollster08)
+summary(obama_linear)$r.squared
+
+```
+
+#### Linear residuals
+
+These plots clearly show that this model is not a good fit for this data (no normal residuals, and no linearity). We should try another model.
+
+```{r}
+
+check_model(obama_linear, check = tests)
+
+```
+
+#### Polynomial model
+
+```{r echo=FALSE}
+
+ggplot(data = Pollster08, mapping = aes(x = Days,
+                                        y = Margin)) +
+  geom_point() + 
+  theme_bw() + 
+  geom_smooth(method = lm, formula = y ~ I(x^2) + x, se = F)
+
+```
+
+This version of the model explains slightly more:
+
+```{r}
+
+obama_polynomial = lm(Margin ~ I(Days^2) + Days, data = Pollster08)
+summary(obama_polynomial)$r.squared
+
+```
+
+#### Polynominal residuals
+
+These residuals also have a pattern, but are much closer to what we expect -- this violations are only mild. Thus, I believe we should use this model.
+
+```{r}
+
+check_model(obama_polynomial, check = tests)
+
+```
+
+### EXERCISE 2C:
+
+*If you used the model you fit in Exercise 2b on election night to predict the margin of the election, how accurate would your prediction have been?*
+
+```{r}
+
+predict(obama_polynomial, data.frame(Days = c(37)))
+
+```
+
+Our predicted value was 11.04 percentage points, which, compared to the actual margin of 7.28 percentage points, was an overestimation by
+```{r echo=FALSE}
+
+11.04-7.28
+
+```
+
+```{r}
+
+fishing = fishing |>
+  group_by(Lake) |>
+  summarize(avg_Walleye = mean(Walleye))
+
+```
+
+
