@@ -71,6 +71,50 @@ tidy(price_mileage, conf.int = TRUE, conf.level = 0.95)
 
 ```
 
+## Section 2.2: Partitioning Variability - ANOVA (03-14-2024)
+
+#### load libraries
+```{r message=FALSE}
+
+library(dplyr)
+library(stats)
+library(Stat2Data)
+
+```
+
+#### load data
+```{r}
+
+data("AccordPrice")
+
+```
+
+
+R's version of the `anova()` function doesn't generate the $SS_{total}$ value, but we can recreate it using `dplyr`
+
+original table in R
+```{r}
+
+price_model = lm(Price ~ Mileage, data = AccordPrice)
+original_table = as_tibble(anova(price_model), rownames = "Term")
+
+original_table
+
+```
+
+add total error row
+```{r}
+
+total_row = tibble(Term = "Total",
+                   Df = sum(original_table$Df),
+                   `Sum Sq` = sum(original_table$`Sum Sq`)) %>%
+  mutate(`Mean Sq` = `Sum Sq`/Df)
+
+full_table = bind_rows(original_table, total_row)
+full_table
+
+```
+
 ## Section 2.3: Regression and Correlation (02-14-2024)
 
 #### load libraries

@@ -350,6 +350,7 @@ this means we have to infer the measures for the Female group's intercept and sl
 extract_eq(weight_age_model, use_coefs = F)
 
 ```
+
 ## Section 3.4: New Predictors from Old (03-02-24)
 
 #### load libraries
@@ -471,6 +472,63 @@ broom::tidy(second_order_model)
 ```{r}
 
 regression_plane(second_order_model)
+
+```
+
+## Section 3.6: Testing Subsets of Predictors (03-14-24)
+
+we can make `anova()` perform a nested F-test by supplying it multiple models
+
+#### load data
+```{r}
+
+data("HousesNY")
+
+```
+
+generate the multiple models:
+```{r}
+
+price_size = lm(Price ~ Size, data = HousesNY)
+price_size_beds_lot = lm(Price ~ Size + Beds + Lot, data = HousesNY)
+
+anova(price_size, price_size_beds_lot)
+
+```
+we prefer to load these models in ascending order of complexity (fewest --> most number of predictors) in order to ensure we don't have negative sums of square and dfs. 
+
+#### 3 or more models
+3 or more models will allow R to perform nested F-tests in pairs. generate one more model
+```{r}
+
+price_all_variables = lm(Price ~ ., data = HousesNY)
+
+```
+
+compare:
+```{r}
+
+anova(price_size, price_size_beds_lot, price_all_variables)
+
+```
+
+row 2 compares model 2 (`price_size_beds_lot`) with model 1 (`price_size`), and row 3 compares model 3 (`price_all_variables`) to model 2 (`price_size_beds_lot`). 
+
+#### possible errors
+
+if you supply the `anova()` with non-nested models, you *can* get missing F-statistics and p-values: 
+```{r}
+
+price_beds_lot = lm(Price ~ Beds + Lot, data = HousesNY)
+anova(price_size, price_beds_lot)
+
+```
+however, R doesn't always protect us, so remember the conditions under which these models operate: 
+```{r}
+
+price_beds = lm(Price ~ Beds, data = HousesNY)
+price_size_lot = lm(Price ~ Size + Lot, data = HousesNY)
+anova(price_beds, price_size_lot)
 
 ```
 

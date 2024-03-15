@@ -7,18 +7,158 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Class 13 | March 6, 2024
+## Class 13 | March 8, 2024
 
-#### load library
+#### load data
 ```{r}
 
+library(Stat2Data)
+data("RailsTrails")
+colnames(RailsTrails)
+
+```
+
+#### fit the two models
+
+*model 1: A model that predicts the 2014 sale price based on an additive combination of the homes distance from the bike path, and it’s size in square feet.* 
+```{r}
+
+model1 = lm(Price2014 ~ Distance + SquareFeet, data = RailsTrails)
+summary(model1)
+
+```
+
+*model 2: A model that predicts the 2014 sale price based on the homes distance from the bike path, it’s size in square feet, and the number of full bathrooms the home has, allowing for the effect of distance to depend on a home’s size*
+```{r}
+
+model2 = lm(Price2014 ~ NumFullBaths + Distance * SquareFeet, data = RailsTrails)
+summary(model2)
+
+```
+
+#### compare the two models
+```{r}
+
+anova(model1, model2)
+
+```
+
+### Question 1
+*Why is a nested F-test an appropriate way to compare these two models?*
+
+all of the predictor variables in model1 (distance from bike path and size in sq ft) are contained in the set of predictor variables from model2 (distance, size, and number of bedrooms). therefore, we can compare these two models to determine if the higher number of predictors and interactions makes a better model. 
+
+### Question 2
+*Which model is the “full” model, and which is the “reduced” model? How can you tell?*
+
+the full model is model2, because it contains all of the predictors in model1 (model1 is nested within). model1 doesn't contain all of model2's predictors. 
+
+### Question 3
+*What null hypothesis does this nested F-test assess?*
+
+the bested f-test's hypotheses are below: 
+
+$H_0: \beta_i = 0$ for any $\beta_i \in W$
+$H_a: \beta_i \neq 0$ for any $\beta_i \in W$
+
+### Question 4
+*Based on the results of this nested F-test, which model of home prices should preferred: Model 1 or Model 2? Why?*
+
+this model tells us that the $SSModel_{full} - SSModel_{reduced} = 33248$, and that $k_{full} - k_{reduced} = 2$. The F-statistic is $4.1072$, with a significant p-value of $0.01934$, which tells us that the changes implemented by adding the number of bedrooms and allowing the interaction between distance and square footage had a significant impact on the model's capacity. 
+
+### Question 5
+*Based on your model comparison above, can you tell whether adding the $Distance \cdot SquareFeet$ interaction is responsible for the increased goodness of fit in the full model, or whether the increase is due to adding the `NumFullBaths` to the model?*
+
+no -- we cannot determine what the cause of the change in sigificance is because of the inclusion of another predictor or because we allowed predictors to interact, because we changed both those things from the original model. thus we only know how much model2 varied from model1, and that there were two changes made, but we can't determine if that's because of either change with what we have so far.  
+
+## Class 12 | March 6, 2024
+
+#### load libraries
+```{r message=FALSE}
+
 library(tidyverse)
+library(ggplot2)
 
 ```
 
 
 #### load data
+```{r message=F}
+
+fishing <- read_csv("https://wjhopper.github.io/SDS-201/data/fishing.csv",
+                    name_repair = "universal") |>
+  select(Year, Lake, Walleye, Channel.Catfish)
+
+```
+
+
+### QUESTION 1
+
+#### generate model
 ```{r}
+
+lake_model = lm(Walleye ~ Lake, data = fishing)
+summary(lake_model)
+
+```
+#### visualize
+```{r}
+
+# plot(emmeans(lake_model, specs = ~ Lake),
+#      horizontal = FALSE,
+#      ylab = "Amount of Walleye caught (1000s of lbs)")
+
+```
+
+*how different is the amount of Walleye caught on average between Lake Ontario and Lake Michigan*
+```{r}
+
+# avg_walleye <- emmeans(lake_model, specs = ~ Lake)
+# contrast(avg_walleye, method = "consec")
+
+```
+
+### QUESTION 2
+
+*Fit a regression model that predicts the amount of Walleye caught based on an interaction between the lake being fished, and the amount of Channel Catfish caught*
+```{r}
+
+walleye_model <- lm(Walleye ~ Channel.Catfish * Lake,
+                    data = filter(fishing, Lake %in% c("Erie", "Huron")))
+summary(walleye_model)
+
+```
+
+#### visualize new model
+```{r}
+
+ggplot(data = filter(fishing, Lake %in% c("Erie", "Huron")),
+       mapping = aes(x = Channel.Catfish, 
+                     y = Walleye, 
+                     color = Lake)) +
+  geom_point() +
+  geom_smooth(method = lm, formula = y ~ x) +
+  labs(x="Amount of Channel Catfish caught (1000s of lbs)",
+       y="Amount of Walleye caught (1000s of lbs)")
+
+```
+
+*What is the difference in the average amount of Walleye caught in Lake Erie and the average amount of Walleye caught in Lake Huron when 200 thousand pounds of Channel Catfish are caught?*
+
+#### generate grid of values
+```{r}
+
+# walleye_grid <- emmeans(walleye_model, specs = ~ Channel.Catfish * Lake,
+#                         at = list(Channel.Catfish = 200))
+# walleye_grid
+
+```
+
+
+#### use the contrast
+```{r}
+
+# contrast(walleye_grid, method = "pairwise", by="Channel.Catfish")
 
 ```
 

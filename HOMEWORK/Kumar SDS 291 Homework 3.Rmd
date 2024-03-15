@@ -25,7 +25,7 @@ library(gridExtra)
 In order to fit any linear model, all models have to pass the LINE test:
 
 * Linearity test --> plot fitted values for each observation against the residuals of each observation there should be no relationship between the two variables. 
-* **Independence test** --> regarding the data collection, the points should not be connected -- this is violated when the same unit is measured over time. 
+* **Independence test** --> regarding the data collection, the points should not be connected -- this is violated when **data is being collected from a series of dogs who are related to each other** 
 * Normality test --> a histogram of the residuals should be normal. 
 * Equal Variance test --> the standard deviation of the errors should be the same regardless of if the model is predicting large or small values 
 
@@ -77,6 +77,8 @@ check_model(price_footage_model, check = c("linearity", "homogeneity",
 
 From these checks, we can see there are only mild violations of the assumptions necessary to make t-tests. When plotted against the fitted values, the residuals have a mostly flat+horizontal spread. While the homogeneity of variance is not entirely constant, the other tests are largely unviolated. The normality of residuals is almost exact, with exceptions at the high end of the bottom left plot. Thus, we can trust the t-tests and view them as reliable. 
 
+**We also understand the independence assumption to be met because the houses populating this dataset (houses sold in Grinnell county from 2005-2015) are in no way related as far as we know. While they might be located near each other, we can safely assume these data don't violate the independence assumption**
+
 ### EXERCISE 3
 *How does a logarithmic transformation of the outcome variable affect your conclusions about whether the model’s assumptions are reasonably met?*
 
@@ -109,7 +111,14 @@ Upon completing a log transformation of the outcome variable (SalePrice), the as
 
 *Interpret what the slope coefficient of this model tells you about the relationship between home price (measured in dollars) and size (measured in square feet).*
 
-The slope coefficient of this model is 4.772e-04, which implies that for each increase in house size by one square foot, the price of the house increases by $0.0004772. 
+The slope coefficient of this model is **4.772e-04**, but we have to exponentiate the change in square footage in order to put it in context:  
+
+$$\Delta log_{SalePrice} = 0.0004772$$
+$$\Delta SalePrice = 10^{0.0004772}$$
+
+$$\Delta SalePrice = 1.0011$$
+
+This implies that for each increase in house size by one square foot, the price of the house increases by $1.0011. 
 
 ### EXERCISE 4
 
